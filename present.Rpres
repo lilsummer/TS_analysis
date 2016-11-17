@@ -1,0 +1,402 @@
+
+Handling Time-Series Data in R
+========================================================
+author: Cassie (Xi) Guo
+date: 
+font-family: 'Helvetica'
+
+<style>
+
+.reveal pre code {
+  display: block; padding: 0.5em;
+  font-size: 1.2em;
+  line-height: 1.1em;
+  background-color: white;
+  overflow: auto;
+  max-height: none;
+  word-wrap: normal;
+}
+
+
+
+</style>
+
+
+Outline
+========================================================
+
+- Introduction of time series in R
+- R libraries for time series
+    
+    - 'stats'
+    - 'zoo'
+    - 'forecast'
+
+- An example
+
+Time series basics
+========================================================
+
+- Data collected from observations sequentially over time
+
+- We use time series to: 
+
+    - Understand the history
+    
+    - Model the data
+    
+    - Predict the future
+    
+============
+<div class="midcenter" style="margin-left:100px; margin-top:100px;">
+<img src="nasdaq.png"></img>
+</div>
+
+
+=======
+<div class="midcenter" style="margin-left:100px; margin-top:100px;">
+<img src="flu.png"></img>
+</div>
+
+
+
+
+
+Two kinds of time series
+========================================================
+
+- Stationary (too good to be true)
+- Nonstationary
+
+```{r, echo=F}
+par(lwd = 3)
+```
+    
+```{r, echo=FALSE, fig.width = 10, fig.height = 3}
+library(TSA)
+library(astsa)
+#data("larain")
+data("color")
+t = seq(0, 30, 0.5)
+y = sin(t)
+#plot(larain, ylab = 'Inches', xlab = 'year', type = 'o')
+par(lwd = 3)
+plot(t, y, type = 'o', xlab = 'time', ylab = 'Sine wave')
+plot(color, ylab = 'Color Property', xlab = 'Batch', type = 'o')
+```
+
+============
+"Experience with real-world data, however, soon convinces once that both stationarity and Gaussianity are fairy tales invented for the amusement of undergraduates." (Thompson 1994)
+
+
+Libraries for time series
+========
+
+- stats
+    
+    - Basic functions
+
+- zoo
+
+    - Irregular time series
+    
+- forecast
+
+    - Prediction & modeling
+
+
+
+    
+'stats' Package
+======
+- Create ts object
+
+    - ts()
+    
+- plot
+
+    - plot.ts() 
+    
+    - ts.plot()
+    
+- Trend analysis
+
+    - lm()
+    
+    - decompose()
+
+- Modeling
+
+    - HoltWinters()
+
+
+ts()
+========================================================
+- start, end, frequency
+
+```{r, echo=T, fig.width = 10, fig.height = 3}
+setwd('/Users/LilSummer/Desktop/TS_analysis')
+men <- read.csv(file = 'men_clothing.csv', header = T, skip = 6)
+
+    ###  make a ts object ###
+    men.ts <- ts(men$Value, 
+                 start = c(1992, 1), 
+                 end = c(2014, 12), 
+                 frequency = 12 )
+
+```
+
+=====
+
+```{r, echo=T, fig.width = 10, fig.height = 3}
+men.ts
+```
+
+
+======
+
+- Optional: start, end
+- Frequency
+
+    - Default: 1
+    
+    - frequency = 52 (week)
+    
+    - frequency = 4 (season)
+
+```{r, echo=T}
+
+men.ts <- ts(men$Value, end = c(2014, 12), frequency = 12)
+men.ts <- ts(men$Value, start = c(1992, 1), frequency = 12)
+men.ts <- ts(men$Value, frequency = 12)
+
+```
+
+
+plot.ts()
+=============
+
+
+```{r, echo=F}
+men <- read.csv(file = 'men_clothing.csv', header = T, skip = 6)
+women <- read.csv(file = 'women_clothing.csv', header = T, skip = 6)
+women.ts <- ts(women$Value, start = c(1992, 1), frequency = 12)
+men.ts <- ts(men$Value, start = c(1992, 1), frequency = 12)
+```
+
+```{r, echo=T, fig.height = 8, fig.width = 20}
+plot.ts(men.ts, lwd = 3)
+```
+
+
+======
+```{r, echo=T, fig.height = 10, fig.width = 20}
+clothes <- cbind(women.ts, men.ts)
+plot.ts(clothes, plot.type = 'multiple') ##multiple is optional
+plot.ts(clothes)
+
+```
+
+=======
+```{r, echo=T, fig.height = 10, fig.width = 20}
+plot.ts(clothes, plot.type = 'single', col = c('dark red', 'dark green'))
+legend("topleft", legend = c('women', 'men'), col = c('dark red', 'dark green'), lty = 1)
+
+```
+
+ts.plot()
+========
+```{r, echo=T, fig.height = 10, fig.width = 30}
+ts.plot(clothes, gpars = list(col = c('dark red', 'dark green')), lwd = 3)
+legend("topleft", legend = c('women', 'men'), col = c('dark red', 'dark green'), lty = 1)
+```
+
+
+lm() -- Trend analysis
+========
+
+```{r, echo=F, fig.height = 10, fig.width = 20}
+plot.ts(men.ts, lwd = 3)
+```
+
+
+====
+```{r, echo=T}
+model = lm(men.ts ~ time(men.ts))
+summary(model)
+
+```
+
+======
+```{r, echo=F, fig.height = 10, fig.width = 20}
+plot.ts(men.ts, lwd = 3)
+abline(model, lwd = 3)
+```
+
+====
+```{r, echo=T}
+time(men.ts)
+
+```
+
+
+
+
+
+decompose()
+====
+```{r, echo=T, fig.height = 10, fig.width = 20}
+men.ts.de <- decompose(men.ts)
+men.ts.de$seasonal
+
+```
+
+===
+```{r, echo=T, fig.height = 10, fig.width = 20}
+plot(men.ts.de, lwd = 4)  ##lwd doesn't work
+```
+
+
+'zoo' Package
+=====
+- Particularly aimed at irregular time series
+of numeric vectors/matrices and factors
+- Create zoo object
+
+    - zooreg()
+    
+- Subset
+
+    - window()
+    
+- Plot
+
+    - autoplot.zoo()
+
+- Handle missing data
+
+    - na.approx()
+    
+    - na.locf()
+    
+
+zooreg()
+=======
+Useful for analyzing daily data
+
+```{r, echo=F}
+Daily = read.csv(file = '2007.csv', header = T)
+```
+    
+```{r, echo=T}
+library(zoo)
+Daily.z <- zooreg(Daily$t.ave, start = as.Date('1960-01-01'), end = as.Date("2015-12-31"), frequency = 1)
+str(Daily.z)
+```
+
+window()
+======
+```{r, echo=T}
+data <- window(Daily.z, start = as.Date('2015-01-01'), end = as.Date('2015-03-01'))
+data
+
+```
+
+
+autoplot.zoo()
+======
+```{r, echo=T, fig.height = 10, fig.width = 20}
+autoplot.zoo(Daily.z[1:100])
+```
+
+
+
+
+'forecast' Package
+=====
+- Modeling
+
+    - forecast()
+    
+    - forecast.HoltWinters()
+    
+    - forecast.Arima()
+
+- Plotting
+
+    - plot.forecast()
+    
+
+An example
+====
+```{r, echo=T, fig.height = 10, fig.width = 20}
+plot.ts(women.ts, lwd = 3)
+```
+
+HoltWinters()
+===
+```{r, echo=T, fig.height = 10, fig.width = 20}
+
+sale.Holt <- HoltWinters(women.ts)
+sale.Holt
+```
+
+===
+```{r, echo=T, fig.height = 10, fig.width = 20}
+plot(sale.Holt, lwd = 3)
+```
+
+
+===
+```{r, echo=T, fig.height = 10, fig.width = 20}
+library(forecast)
+sale.forecast <- forecast.HoltWinters(sale.Holt, h = 48)
+plot.forecast(sale.forecast, lwd = 3)
+```
+
+===
+<div class="midcenter" style="margin-left:100px; margin-top:0px;">
+<img src="wrong.png"></img>
+</div>
+
+Model diagnostics
+===
+```{r, echo=T, fig.height = 10, fig.width = 20}
+acf(sale.forecast$residuals, lag.max = 20)
+
+```
+
+===
+```{r, echo=T, fig.height = 10, fig.width = 20}
+Box.test(sale.forecast$residuals, lag = 20, type = 'Ljung-Box')
+```
+
+
+Othe packages
+=====
+- TSA
+    
+- quantmod
+
+- TTR
+
+
+References
+====
+- https://a-little-book-of-r-for-time-series.readthedocs.io/en/latest/src/timeseries.html#time-series-analysis
+
+- Time Series Analysis: With Applications in R, Jonathan Cryer and Kung-sik Chan
+
+- Introductory Time Series with R (Use R!), Paul S.P. Cowpertwait  (Author) and Andrew V. Metcalfe
+
+
+
+=====
+- "All models are wrong but some are useful”
+——— George Box, Statistician 
+
+- http://xkcd.com/1725/
+
+<div class="midcenter" style="margin-left:100px; margin-top:0px;">
+<img src="xkcd.png"></img>
+</div>

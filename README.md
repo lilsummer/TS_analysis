@@ -1,5 +1,3 @@
-# Time_Series_Starter_Tutorial
-
 # Handling Time Series in R
 
 ###### Author: Xi Guo
